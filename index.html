@@ -564,6 +564,264 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
         regs.forEach(reg=>reg.update());
       });
     }
+  
+// ========== SUPABASE MEDIA UPLOADS ==========
+async function saveMediaItemSupabase(type) {
+  const map = MEDIA_INPUT_MAP[type];
+  const title = document.getElementById(map.title).value.trim();
+  if (!title) { alert('Weka jina/kichwa!'); return; }
+
+  const fileInput = document.getElementById(
+    type === 'special' ? 'sp-file' :
+    type === 'audio-preach' ? 'ap-file' :
+    type === 'sifa' ? 'sf-file' : null
+  );
+  const ytInput = map.yt ? document.getElementById(map.yt).value.trim() : '';
+  const btn = document.querySelector(`#mtab-${type} .admin-btn-save`);
+  const suc = document.getElementById(map.success);
+
+  let audioUrl = null;
+
+  // Upload audio file if selected
+  if (fileInput && fileInput.files[0]) {
+    if (btn) { btn.textContent = '⏳ Inapakia...'; btn.disabled = true; }
+    
+    try {
+      audioUrl = await uploadToSupabase(fileInput.files[0], type);
+    } catch (err) {
+      alert('Hitilafu ya kupakia: ' + err.message);
+      if (btn) { btn.textContent = '💾 Hifadhi'; btn.disabled = false; }
+      return;
+    }
+  }
+
+  const item = {
+    id: Date.now(), type, title,
+    artist: map.artist ? document.getElementById(map.artist).value.trim() : '',
+    date: map.date ? document.getElementById(map.date).value.trim() : '',
+    yt: ytInput || null,
+    audio: audioUrl || null,
+  };
+
+  const key = 'media_' + type;
+  const list = memLoad(key) || [];
+  list.unshift(item);
+  memSave(key, list);
+
+  // Clear inputs
+  if (fileInput) fileInput.value = '';
+  ['sp-file-name','ap-file-name','sf-file-name'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '';
+  });
+  Object.values(map).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && id !== map.success) el.value = '';
+  });
+
+  if (btn) { btn.textContent = '💾 Hifadhi'; btn.disabled = false; }
+  if (suc) { suc.style.display = 'block'; setTimeout(() => suc.style.display = 'none', 3000); }
+  renderMediaList(type);
+}
+
+// Override saveMediaItem to use Supabase
+function saveMediaItem(type) {
+  saveMediaItemSupabase(type);
+}
+
+// Save sermon with Supabase audio
+async function saveSermonSupabase() {
+  const title = document.getElementById('s-title').value.trim();
+  if (!title) { alert('Weka kichwa cha muhubiri!'); return; }
+
+  const fileInput = document.getElementById('s-audio-file');
+  const btn = document.querySelector('#atab-mahubiri .admin-btn-save');
+  let audioUrl = null;
+
+  if (fileInput && fileInput.files[0]) {
+    if (btn) { btn.textContent = '⏳ Inapakia...'; btn.disabled = true; }
+    try {
+      audioUrl = await uploadToSupabase(fileInput.files[0], 'mahubiri');
+    } catch (err) {
+      alert('Hitilafu: ' + err.message);
+      if (btn) { btn.textContent = '💾 Hifadhi Muhubiri'; btn.disabled = false; }
+      return;
+    }
+  }
+
+  const sermon = {
+    id: Date.now(), title,
+    preacher: document.getElementById('s-preacher').value.trim() || 'Mch. J. Pill',
+    date: document.getElementById('s-date').value.trim(),
+    day: document.getElementById('s-day').value,
+    yt: document.getElementById('s-yt').value.trim(),
+    audio: audioUrl || document.getElementById('s-audio-data').value,
+  };
+
+  const sermons = memLoad('sermons') || [];
+  sermons.unshift(sermon);
+  memSave('sermons', sermons);
+
+  ['s-title','s-preacher','s-date','s-yt','s-audio-data'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('s-audio-name').textContent = '';
+  if (fileInput) fileInput.value = '';
+  if (btn) { btn.textContent = '💾 Hifadhi Muhubiri'; btn.disabled = false; }
+  showSuccess('s-success');
+  loadAdminData();
+  renderDynamicSermons();
+}
+
+function saveSermon() { saveSermonSupabase(); }
+
+// Save song audio with Supabase
+async function saveAudioHymnSupabase(num) {
+  const mp3File = document.getElementById('ahfile-' + num);
+  const yt = document.getElementById('ahyt-' + num).value.trim();
+  
+  if (!mp3File?.files[0] && !yt) { 
+    alert('Weka MP3 au link ya YouTube!'); return; 
+  }
+
+  const btn = document.querySelector(`#ahcard-${num} .audio-save-btn`);
+  let mp3Url = null;
+
+  if (mp3File && mp3File.files[0]) {
+    if (btn) { btn.textContent = '⏳ Inapakia...'; btn.disabled = true; }
+    try {
+      mp3Url = await uploadToSupabase(mp3File.files[0], 'nyimbo');
+    } catch (err) {
+      alert('Hitilafu: ' + err.message);
+      if (btn) { btn.textContent = '💾 Hifadhi Audio — '; btn.disabled = false; }
+      return;
+    }
+  }
+
+  const saved = memLoad('song_audio') || {};
+  saved[num] = { mp3: mp3Url || null, yt: yt || null };
+  memSave('song_audio', saved);
+
+  const s = SONGS_AUDIO.find(x => x.num === num);
+  if (s) { s.mp3 = mp3Url || null; s.yt = yt || null; }
+
+  document.getElementById('ahyt-' + num).value = '';
+  if (mp3File) { mp3File.value = ''; }
+  document.getElementById('ahfilename-' + num).textContent = '';
+
+  if (btn) { btn.textContent = '💾 Hifadhi Audio'; btn.disabled = false; }
+
+  const suc = document.getElementById('ahsuccess-' + num);
+  if (suc) { suc.style.display = 'block'; setTimeout(() => suc.style.display = 'none', 2500); }
+
+  renderAudioHymns();
+  renderSongs(SONGS_AUDIO);
+}
+
+function saveAudioHymn(num) { saveAudioHymnSupabase(num); }
+
+// Quick save song audio
+async function quickSaveSong() {
+  const num = parseInt(document.getElementById('quick-song-select').value);
+  const yt = document.getElementById('quick-song-yt').value.trim();
+  const mp3File = document.getElementById('quick-mp3');
+  
+  if (!mp3File?.files[0] && !yt) { 
+    alert('Weka link ya YouTube au faili ya MP3!'); return; 
+  }
+
+  const btn = document.querySelector('#tab-songs .audio-save-btn');
+  let mp3Url = null;
+
+  if (mp3File && mp3File.files[0]) {
+    if (btn) { btn.textContent = '⏳ Inapakia...'; btn.disabled = true; }
+    try {
+      mp3Url = await uploadToSupabase(mp3File.files[0], 'nyimbo');
+    } catch (err) {
+      alert('Hitilafu: ' + err.message);
+      if (btn) { btn.textContent = '💾 Hifadhi Audio'; btn.disabled = false; }
+      return;
+    }
+  }
+
+  const saved = memLoad('song_audio') || {};
+  saved[num] = { yt: yt || null, mp3: mp3Url || null };
+  memSave('song_audio', saved);
+
+  const s = SONGS_AUDIO.find(x => x.num === num);
+  if (s) { s.yt = yt || null; s.mp3 = mp3Url || null; }
+
+  document.getElementById('quick-song-yt').value = '';
+  document.getElementById('quick-mp3-data').value = '';
+  document.getElementById('quick-mp3-name').textContent = '';
+  if (mp3File) mp3File.value = '';
+
+  if (btn) { btn.textContent = '💾 Hifadhi Audio'; btn.disabled = false; }
+
+  const suc = document.getElementById('quick-song-success');
+  if (suc) { suc.style.display = 'block'; setTimeout(() => suc.style.display = 'none', 2500); }
+
+  renderSongs(SONGS_AUDIO);
+}
+
+</script>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ========== SUPABASE STORAGE ==========
+    const SUPABASE_URL = 'https://plxmjbscgyhkahisjgzc.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBseG1qYnNjZ3loa2FoaXNqZ3pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MzY2NjgsImV4cCI6MjA5NDUxMjY2OH0.R1rw4v05xO4uvVbL4S61-kIcRzjAXRJlur94e36r4wQ';
+    const BUCKET = 'Shalom Tabernacle';
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Upload file to Supabase Storage
+    async function uploadToSupabase(file, folder) {
+      try {
+        const fileName = folder + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const { data, error } = await supabaseClient.storage
+          .from(BUCKET)
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        
+        if (error) throw error;
+        
+        // Get public URL
+        const { data: urlData } = supabaseClient.storage
+          .from(BUCKET)
+          .getPublicUrl(fileName);
+        
+        return urlData.publicUrl;
+      } catch (err) {
+        console.error('Upload error:', err);
+        throw err;
+      }
+    }
+
+    // Upload progress handler
+    async function handleSupabaseUpload(file, folder, progressEl, successEl, errorEl) {
+      try {
+        if (progressEl) progressEl.style.display = 'block';
+        if (successEl) successEl.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        
+        const url = await uploadToSupabase(file, folder);
+        
+        if (progressEl) progressEl.style.display = 'none';
+        if (successEl) {
+          successEl.style.display = 'block';
+          successEl.textContent = '✅ Imepakiwa! URL: ' + url;
+        }
+        return url;
+      } catch (err) {
+        if (progressEl) progressEl.style.display = 'none';
+        if (errorEl) {
+          errorEl.style.display = 'block';
+          errorEl.textContent = '❌ Hitilafu: ' + err.message;
+        }
+        return null;
+      }
+    }
   </script>
 </head>
 <body>

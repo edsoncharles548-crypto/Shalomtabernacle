@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shalom-tabernacle-v1';
+const CACHE_NAME = 'shalom-tabernacle-v1778904547';
 const ASSETS = [
   '/',
   '/index.html',
