@@ -1,2 +1,0 @@
- # Shalomtabernacle
-Church app
