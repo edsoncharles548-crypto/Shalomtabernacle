@@ -2,7 +2,7 @@ const CACHE_NAME = 'shalom-tabernacle-v1';
 const ASSETS = [
   '/',
   '/index.html',
-  '/ShalomTabernacleChurch.html',
+  '/ShalomTabernacleChurchtz.html',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap'
 ];
@@ -48,7 +48,7 @@ self.addEventListener('fetch', e => {
       }).catch(() => {
         // Offline fallback
         if(e.request.destination === 'document'){
-          return caches.match('/ShalomTabernacleChurch.html');
+          return caches.match('/ShalomTabernacleChurchtz.html');
         }
       });
     })
