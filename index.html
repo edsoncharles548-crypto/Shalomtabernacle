@@ -2203,12 +2203,7 @@ function fsFontSize(delta){
   if(h) renderFS(h);
 }
 
-// Track current hymn num when opened
-const _origOpenHymn = openHymn;
-function openHymn(num){
-  window._currentHymnNum = num;
-  _origOpenHymn(num);
-}
+
 
 // Close fullscreen on back button (Android)
 window.addEventListener('popstate', () => {
