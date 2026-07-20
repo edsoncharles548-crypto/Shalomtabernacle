@@ -1,10 +1,8 @@
-const CACHE_NAME = 'shalom-tabernacle-v1';
+const CACHE_NAME = 'shalom-tabernacle-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/ShalomTabernacleChurchtz.html',
-  '/manifest.json',
-  'https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 // Install - cache all assets
@@ -46,9 +44,8 @@ self.addEventListener('fetch', e => {
         });
         return response;
       }).catch(() => {
-        // Offline fallback
         if(e.request.destination === 'document'){
-          return caches.match('/ShalomTabernacleChurchtz.html');
+          return caches.match('./index.html');
         }
       });
     })
